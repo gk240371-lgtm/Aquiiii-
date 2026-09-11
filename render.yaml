@@ -13,5 +13,7 @@ services:
         generateValue: true
       - key: NIX_API_BASE
         value: https://salas.nixbot.vip
+      - key: NIX_API_TOKEN
+        sync: false
       - key: FRONTEND_URL
         sync: false

@@ -11,9 +11,19 @@ app.set("trust proxy", 1);
 
 const PORT = Number(process.env.PORT || 3000);
 const BASE = (process.env.NIX_API_BASE || "https://salas.nixbot.vip").replace(/\/+$/, "");
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "";
+const NIX_API_TOKEN = String(process.env.NIX_API_TOKEN || "").trim();
 const KEY_HEX = process.env.TOKEN_ENCRYPTION_KEY;
 const ALLOWED_ORIGIN = (process.env.FRONTEND_URL || "").replace(/\/+$/, "");
+
+function originAllowed(origin) {
+  if (!origin) return true;
+  if (ALLOWED_ORIGIN && origin === ALLOWED_ORIGIN) return true;
+  try {
+    const u = new URL(origin);
+    return u.protocol === "https:" && u.hostname.endsWith(".netlify.app");
+  } catch { return false; }
+}
 
 if (!ADMIN_PASSWORD || !KEY_HEX || !/^[0-9a-fA-F]{64}$/.test(KEY_HEX)) {
   throw new Error("Configure ADMIN_PASSWORD e TOKEN_ENCRYPTION_KEY (64 caracteres hexadecimais).");
@@ -23,7 +33,7 @@ const KEY = Buffer.from(KEY_HEX, "hex");
 
 app.use((req, res, next) => {
   const origin = req.headers.origin;
-  if (origin && (!ALLOWED_ORIGIN || origin === ALLOWED_ORIGIN)) {
+  if (origin && originAllowed(origin)) {
     res.setHeader("Access-Control-Allow-Origin", origin);
     res.setHeader("Vary", "Origin");
     res.setHeader("Access-Control-Allow-Credentials", "true");
@@ -42,6 +52,19 @@ app.use((req, res, next) => {
 });
 
 app.use(express.json({ limit: "32kb" }));
+
+app.use((req, res, next) => {
+  if (!req.path.startsWith("/api/") || req.path === "/api/login" || req.path === "/api/token") return next();
+  const key = req.ip || "unknown";
+  const now = Date.now();
+  global.__panelRate = global.__panelRate || new Map();
+  const item = global.__panelRate.get(key) || { count: 0, since: now };
+  if (now - item.since >= 60000) { item.count = 0; item.since = now; }
+  item.count++; global.__panelRate.set(key, item);
+  if (item.count > 180) return res.status(429).json({ error: "Muitas requisições. Aguarde alguns segundos." });
+  next();
+});
+
 
 const dataDir = path.join(__dirname, "..", "data");
 fs.mkdirSync(dataDir, { recursive: true });
@@ -73,6 +96,7 @@ function decrypt(row) {
 }
 
 function getToken() {
+  if (NIX_API_TOKEN) return NIX_API_TOKEN;
   const row = db.prepare(
     "SELECT iv, tag, ciphertext FROM secrets WHERE id=1"
   ).get();
@@ -104,9 +128,9 @@ function rateLimitLogin(req, res, next) {
   current.count++;
   loginAttempts.set(ip, current);
 
-  if (current.count > 10) {
+  if (current.count > 60) {
     return res.status(429).json({
-      error: "Muitas tentativas. Aguarde 15 minutos."
+      error: "Muitas tentativas de login. Aguarde alguns minutos e tente novamente."
     });
   }
 
@@ -164,7 +188,7 @@ function sendError(res, e) {
 }
 
 app.get("/health", (req, res) => {
-  res.json({ ok: true, service: "nix-salas-backend" });
+  res.json({ ok: true, service: "nix-salas-backend", nix_token_configured: !!getToken() });
 });
 
 app.post("/api/login", rateLimitLogin, (req, res) => {
@@ -174,7 +198,7 @@ app.post("/api/login", rateLimitLogin, (req, res) => {
   res.json({ ok: true, token: ADMIN_PASSWORD });
 });
 
-app.get("/api/token/status", auth, (req, res) => {
+app.get("/api/token/status", (req, res) => {
   res.json({ configured: !!getToken() });
 });
 
@@ -187,11 +211,11 @@ app.post("/api/token", auth, (req, res) => {
   res.json({ ok: true });
 });
 
-app.get("/api/balance", auth, async (req, res) => {
+app.get("/api/balance", async (req, res) => {
   try { res.json(await nix("/balance")); } catch (e) { sendError(res, e); }
 });
 
-app.post("/api/rooms", auth, async (req, res) => {
+app.post("/api/rooms", async (req, res) => {
   try {
     const body = req.body || {};
     if (!body.password || !body.start_delay_minutes || !body.config_type) {
@@ -206,12 +230,12 @@ app.post("/api/rooms", auth, async (req, res) => {
   } catch (e) { sendError(res, e); }
 });
 
-app.get("/api/rooms/:id", auth, async (req, res) => {
+app.get("/api/rooms/:id", async (req, res) => {
   try { res.json(await nix(`/rooms/${encodeURIComponent(req.params.id)}`)); }
   catch (e) { sendError(res, e); }
 });
 
-app.get("/api/rooms/:id/members", auth, async (req, res) => {
+app.get("/api/rooms/:id/members", async (req, res) => {
   try {
     const q = req.query.include_loadout === "true"
       ? "?include_loadout=true" : "";
@@ -219,7 +243,7 @@ app.get("/api/rooms/:id/members", auth, async (req, res) => {
   } catch (e) { sendError(res, e); }
 });
 
-app.post("/api/rooms/:id/kick", auth, async (req, res) => {
+app.post("/api/rooms/:id/kick", async (req, res) => {
   try {
     res.json(await nix(`/rooms/${encodeURIComponent(req.params.id)}/kick`, {
       method: "POST",
@@ -230,7 +254,7 @@ app.post("/api/rooms/:id/kick", auth, async (req, res) => {
   } catch (e) { sendError(res, e); }
 });
 
-app.post("/api/rooms/:id/start", auth, async (req, res) => {
+app.post("/api/rooms/:id/start", async (req, res) => {
   try {
     res.json(await nix(`/rooms/${encodeURIComponent(req.params.id)}/start`, {
       method: "POST"
@@ -238,7 +262,7 @@ app.post("/api/rooms/:id/start", auth, async (req, res) => {
   } catch (e) { sendError(res, e); }
 });
 
-app.post("/api/rooms/:id/release", auth, async (req, res) => {
+app.post("/api/rooms/:id/release", async (req, res) => {
   try {
     res.json(await nix(`/rooms/${encodeURIComponent(req.params.id)}/release`, {
       method: "POST"
@@ -246,12 +270,12 @@ app.post("/api/rooms/:id/release", auth, async (req, res) => {
   } catch (e) { sendError(res, e); }
 });
 
-app.get("/api/rooms/:id/result", auth, async (req, res) => {
+app.get("/api/rooms/:id/result", async (req, res) => {
   try { res.json(await nix(`/rooms/${encodeURIComponent(req.params.id)}/result`)); }
   catch (e) { sendError(res, e); }
 });
 
-app.get("/api/stats/tc", auth, async (req, res) => {
+app.get("/api/stats/tc", async (req, res) => {
   try {
     const ids = String(req.query.ids || "").replace(/[^0-9,]/g, "");
     if (!ids) return res.status(422).json({ error: "Informe IDs." });

@@ -1,0 +1,3 @@
+Envie ESTES ARQUIVOS ao Netlify Drop. Backend: https://aquiiii.onrender.com
+Senha do painel: GABRIEL
+Não coloque token real da Nix no GitHub.

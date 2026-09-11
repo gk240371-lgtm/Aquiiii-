@@ -1,0 +1,12 @@
+CORREÇÃO DO 'NÃO AUTORIZADO'
+
+1. No Render, abra Environment.
+2. Confirme a variável NIX_API_TOKEN e o valor do token da Nix.
+3. Salve e faça redeploy.
+4. Abra o painel.
+5. A seção 'Configuração da Nix API' deve mostrar 'Nix API: conectada ao Render ✓'.
+6. Crie a sala.
+
+O token não é colocado no frontend nem no ZIP para não ficar público.
+
+Se a Nix ainda responder 401/403, o painel agora deve mostrar a mensagem retornada pela Nix em vez de esconder o motivo.
