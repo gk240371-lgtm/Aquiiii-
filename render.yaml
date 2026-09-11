@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: nix-salas-backend
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: ADMIN_PASSWORD
+        value: GABRIEL
+      - key: TOKEN_ENCRYPTION_KEY
+        generateValue: true
+      - key: NIX_API_BASE
+        value: https://salas.nixbot.vip
+      - key: FRONTEND_URL
+        sync: false

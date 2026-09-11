@@ -1,0 +1,40 @@
+NIX SALAS FF — NETLIFY + RENDER
+
+SENHA DO PAINEL: GABRIEL
+
+ARQUITETURA
+- Netlify = frontend
+- Render = backend Node.js
+- Token Nix = criptografado no backend com AES-256-GCM
+
+1. RENDER
+- Crie um Web Service apontando para este projeto.
+- Build Command: npm install
+- Start Command: npm start
+- Environment:
+  ADMIN_PASSWORD=GABRIEL
+  TOKEN_ENCRYPTION_KEY=<64 caracteres hexadecimais>
+  NIX_API_BASE=https://salas.nixbot.vip
+  FRONTEND_URL=https://SEU-SITE.netlify.app
+- Depois do deploy, teste: https://SEU-BACKEND/health
+  Deve aparecer JSON com ok=true.
+
+OBSERVAÇÃO SOBRE SQLITE NO RENDER:
+O banco data/secrets.db usa o disco local. Em serviços sem disco persistente, dados locais podem ser perdidos em reinicializações/deploys. Para manter o token salvo de forma permanente, use armazenamento persistente do Render ou um banco externo antes de colocar em produção.
+
+2. NETLIFY
+- Publique o projeto no Netlify.
+- Environment Variables:
+  BACKEND_URL=https://SEU-BACKEND.onrender.com
+- Faça novo deploy.
+
+3. LOGIN
+Senha: GABRIEL
+
+4. TOKEN NIX
+Depois de entrar, cole o token no campo "Configuração" e salve. O token não é enviado para o frontend.
+
+5. SE DER ERRO
+- "BACKEND_URL não configurado": variável BACKEND_URL faltando no Netlify.
+- "Backend offline": Render não está online ou a URL está errada.
+- CORS: FRONTEND_URL no Render precisa ser exatamente o endereço do Netlify.

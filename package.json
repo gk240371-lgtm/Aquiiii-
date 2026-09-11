@@ -1,0 +1,11 @@
+{
+  "name": "nix-salas-ff",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": { "start": "node backend/server.js" },
+  "dependencies": {
+    "better-sqlite3": "^11.8.1",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2"
+  }
+}

@@ -1,0 +1,3 @@
+[build]
+  publish = "netlify/site"
+  command = "python3 netlify_build.py"
