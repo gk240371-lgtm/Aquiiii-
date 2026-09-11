@@ -1,126 +1,30 @@
 <!doctype html>
 <html lang="pt-BR">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#0b1020">
-<title>Nix Salas FF — Painel</title>
-<link rel="stylesheet" href="/style.css">
-<script src="/config.js"></script>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Nix Salas FF</title><link rel="stylesheet" href="/style.css">
 </head>
 <body>
-<div id="toast" class="toast"></div>
-
-<section id="login" class="login-page">
-  <div class="login-glow"></div>
-  <div class="card login-card">
-    <div class="brand-mark">🎮</div>
-    <div class="eyebrow">NIX SALAS FF</div>
-    <h1>Painel de salas</h1>
-    <p class="muted">Gerencie suas salas Free Fire em um único lugar.</p>
-    <label>Senha do painel
-      <input id="loginPass" type="password" placeholder="Digite sua senha" autocomplete="current-password">
-    </label>
-    <button class="primary big" onclick="login()">Entrar no painel</button>
-    <div id="loginMsg" class="message"></div>
-    <div id="connection" class="connection">● Verificando conexão...</div>
-  </div>
+<div id="login" class="center"><div class="card login"><h1>🎮 Nix Salas FF</h1><p>Painel privado</p>
+<input id="loginPass" type="password" placeholder="Senha do painel"><button onclick="login()">Entrar</button><div id="loginMsg"></div></div></div>
+<div id="app" hidden><header><div><h1>🎮 Nix Salas FF</h1><small>Gerenciador de salas</small></div><button class="ghost" onclick="logout()">Sair</button></header>
+<main>
+<section class="card"><h2>Configuração segura</h2><p>O token fica somente no backend e é armazenado criptografado com AES-256-GCM.</p>
+<div class="row"><input id="apiToken" type="password" placeholder="Cole o token da Nix API"><button onclick="saveToken()">Salvar token</button></div><span id="tokenStatus"></span></section>
+<section class="grid">
+<div class="card"><h2>Criar sala</h2>
+<label>Modo<select id="mode" onchange="modeChanged()"><option value="ap_padrao">AP padrão</option><option value="gelo_inf">Gelo infinito</option><option value="tatico">Tático</option><option value="ap_fullcapa">AP Full Capa</option><option value="capa_3">Capa 3</option><option value="ap_uxd">AP UXD</option><option value="ap_7r">AP 7R</option><option value="br_padrao">Battle Royale</option></select></label>
+<label>Nome<input id="roomName" value="Sala Nix"></label>
+<label>Senha da sala<input id="roomPass" value="123456" maxlength="16"></label>
+<label>Mapa<select id="map"><option>Bermuda</option><option>Purgatory</option><option>Kalahari</option><option>Nextera</option><option>Nova Terra</option><option>Solara</option></select></label>
+<label>Atraso (min)<input id="delay" type="number" min="1" max="20" value="10"></label>
+<div id="brFields" hidden><label>Equipe<select id="team"><option value="solo">Solo</option><option value="duo">Duo</option><option value="squad">Squad</option></select></label>
+<label>Espectadores<select id="spec"><option>30</option><option>16</option><option>8</option><option>6</option><option>4</option><option>2</option><option>1</option></select></label></div>
+<button onclick="createRoom()">➕ Criar sala</button><pre id="createOut"></pre></div>
+<div class="card"><h2>Sala atual</h2><label>Session ID<input id="session" placeholder="Aparece ao criar"></label>
+<div class="actions"><button onclick="loadMembers()">👥 Jogadores</button><button onclick="startRoom()">▶️ Iniciar</button><button onclick="result()">🏆 Resultado</button><button class="danger" onclick="releaseRoom()">Encerrar</button></div>
+<div id="roomInfo"></div><div id="members"></div><pre id="resultOut"></pre></div>
 </section>
-
-<div id="app" hidden>
-<header class="topbar">
-  <div class="brand">
-    <span class="brand-icon">🎮</span>
-    <div><strong>Nix Salas FF</strong><small>Painel de gerenciamento</small></div>
-  </div>
-  <div class="top-actions">
-    <span id="apiDot" class="status-pill">● Backend</span>
-    <button class="ghost" onclick="logout()">Sair</button>
-  </div>
-</header>
-
-<main class="container">
-  <section class="hero">
-    <div>
-      <div class="eyebrow">DASHBOARD</div>
-      <h2>Controle suas salas</h2>
-      <p class="muted">Crie, acompanhe, inicie e encerre suas salas pelo celular.</p>
-    </div>
-    <button class="secondary" onclick="checkBackend()">↻ Atualizar conexão</button>
-  </section>
-
-  <section class="stats">
-    <div class="stat card"><span>🔐</span><div><small>Token Nix</small><strong id="tokenStatus">Verificando...</strong></div></div>
-    <div class="stat card"><span>🆔</span><div><small>Sessão atual</small><strong id="statSession">Nenhuma</strong></div></div>
-    <div class="stat card"><span>☁️</span><div><small>Backend</small><strong id="backendStatus">Verificando...</strong></div></div>
-  </section>
-
-  <section class="card">
-    <div class="section-title"><div><h3>🔐 Configuração</h3><p class="muted">O token da Nix fica somente no backend.</p></div></div>
-    <div class="row">
-      <input id="apiToken" type="password" placeholder="Cole aqui o token da Nix API">
-      <button class="primary" onclick="saveToken()">Salvar token</button>
-    </div>
-    <div id="tokenMsg" class="message"></div>
-  </section>
-
-  <section class="grid">
-    <div class="card">
-      <div class="section-title"><div><h3>➕ Criar sala</h3><p class="muted">Configure a sala antes de criar.</p></div></div>
-      <div class="form-grid">
-        <label>Modo
-          <select id="mode" onchange="modeChanged()">
-            <option value="ap_padrao">AP padrão</option>
-            <option value="gelo_inf">Gelo infinito</option>
-            <option value="tatico">Tático</option>
-            <option value="ap_fullcapa">AP Full Capa</option>
-            <option value="capa_3">Capa 3</option>
-            <option value="ap_uxd">AP UXD</option>
-            <option value="ap_7r">AP 7R</option>
-            <option value="br_padrao">Battle Royale</option>
-          </select>
-        </label>
-        <label>Nome da sala<input id="roomName" value="Sala Nix"></label>
-        <label>Senha da sala<input id="roomPass" value="123456" maxlength="16"></label>
-        <label>Mapa
-          <select id="map">
-            <option>Bermuda</option><option>Purgatory</option><option>Kalahari</option>
-            <option>Nextera</option><option>Nova Terra</option><option>Solara</option>
-          </select>
-        </label>
-        <label>Atraso (min)<input id="delay" type="number" min="1" max="20" value="10"></label>
-      </div>
-      <div id="brFields" class="form-grid" hidden>
-        <label>Equipe<select id="team"><option value="solo">Solo</option><option value="duo">Duo</option><option value="squad">Squad</option></select></label>
-        <label>Espectadores<select id="spec"><option>30</option><option>16</option><option>8</option><option>6</option><option>4</option><option>2</option><option>1</option></select></label>
-      </div>
-      <button class="primary big" onclick="createRoom()">Criar sala</button>
-      <pre id="createOut" class="output"></pre>
-    </div>
-
-    <div class="card">
-      <div class="section-title"><div><h3>🎯 Sala atual</h3><p class="muted">Use a sessão criada para gerenciar.</p></div></div>
-      <label>Session ID<input id="session" placeholder="Será preenchida ao criar a sala"></label>
-      <div class="room-info" id="roomInfo"><span class="empty">Nenhuma sala selecionada.</span></div>
-      <div class="actions">
-        <button class="secondary" onclick="loadMembers()">👥 Jogadores</button>
-        <button class="primary" onclick="startRoom()">▶ Iniciar</button>
-        <button class="secondary" onclick="result()">🏆 Resultado</button>
-        <button class="danger" onclick="releaseRoom()">Encerrar</button>
-      </div>
-      <div id="members" class="members"></div>
-      <pre id="resultOut" class="output"></pre>
-    </div>
-  </section>
-
-  <section class="card">
-    <div class="section-title"><div><h3>💰 Saldo da API</h3><p class="muted">Consulte seu saldo quando quiser.</p></div><button class="secondary" onclick="balance()">Atualizar</button></div>
-    <pre id="balanceOut" class="output"></pre>
-  </section>
-
-  <footer>Nix Salas FF • painel privado</footer>
-</main>
-</div>
-<script src="/app.js"></script>
-</body>
-</html>
+<section class="card"><h2>Saldo</h2><button onclick="balance()">Atualizar</button><pre id="balanceOut"></pre></section>
+</main></div>
+<script src="/app.js"></script></body></html>
